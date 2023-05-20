@@ -21,8 +21,19 @@ const shopRoutes = require('./routes/shop');
 //in here i am going to make one-many relation between two table by using thier models
 const productModel=require('./models/product');
 const userModel=require('./models/user');
+const cartModel=require("./models/cart")
+const cartItemModel=require('./models/cart-items');
+
+
 productModel.belongsTo(userModel,{constraints:true , onDelete:'cascade'});
 userModel.hasMany(productModel);
+//single user can have single cart only(one-to-one)
+userModel.hasOne(cartModel);
+cartModel.belongsTo(userModel);
+//a cart can have multiple products and a product can present in multiple cart(many-to-many)
+cartModel.belongsToMany(productModel,{through:cartItemModel});
+productModel.belongsToMany(cartModel,{through:cartItemModel});
+
 
 app.use(bodyParser.urlencoded({ extended: false }));
 
@@ -46,18 +57,22 @@ app.use(shopRoutes);
 app.use(errorController.get404);
 
 sequelize
-//sync({force:true})
+//.sync({force:true})
 .sync()
 .then(result=>{
     return userModel.findByPk(1);
 })
 .then(user=>{
     if(!user){
+        //if no user is present then we have to create a new user.
         userModel.create({name:'max',email:'maxi123@gmail',});
     }
     return user;
 })
 .then(user=>{
+    return user.createCart();
+})
+.then(cart=>{
     app.listen(3000);
 })
 .catch(err=>console.log(err));
